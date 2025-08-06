@@ -714,22 +714,29 @@ function VideoPlayer({ currentVideo, onClose }) {
   )
 }
 
-function FolderBrowser() {
+function FolderBrowser({ onCategorySelect }) {
   return (
-    <div className="folder-browser">
-      <div className="folder-header">
-        <FolderOpen size={20} />
-        Browse Folders
-      </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '30px' }}>
       {categories.map(category => (
-        <div key={category.name} className="folder-item">
-          <div className="folder-icon" style={{ backgroundColor: category.color }}>
-            <category.icon size={18} />
+        <div 
+          key={category.name} 
+          className="video-card" 
+          onClick={() => onCategorySelect && onCategorySelect(category.name)}
+          style={{ cursor: 'pointer' }}
+        >
+          <div className="video-thumbnail" style={{ 
+            background: `linear-gradient(135deg, ${category.color}, ${category.color}80)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white'
+          }}>
+            <category.icon size={48} />
           </div>
-          <span style={{ flex: 1 }}>{category.name}</span>
-          <span style={{ color: '#7d8590', fontSize: '14px' }}>
-            {category.count} videos
-          </span>
+          <div className="video-info">
+            <h3 className="video-title">{category.name}</h3>
+            <p className="video-description">{category.count} videos available</p>
+          </div>
         </div>
       ))}
     </div>
@@ -773,9 +780,21 @@ function App() {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('')
 
-  const filteredVideos = sampleVideos.filter(video =>
-    video.title.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Filter videos based on search term and selected category
+  const filteredVideos = sampleVideos.filter(video => {
+    const matchesSearch = video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         video.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         video.genre.some(g => g.toLowerCase().includes(searchTerm.toLowerCase()))
+    
+    const matchesCategory = !selectedCategory || 
+                           video.category === selectedCategory || 
+                           (selectedCategory === 'Featured' && video.featured)
+    
+    return matchesSearch && matchesCategory
+  })
+
+  // Get featured videos for home page
+  const featuredVideos = sampleVideos.filter(video => video.featured)
 
   const handlePlayVideo = (video) => {
     setCurrentVideo(video)
@@ -787,8 +806,8 @@ function App() {
         return (
           <div>
             <h2 className="section-title">
-              <Home size={24} />
-              Welcome to MX Player Clone
+              <Star size={24} />
+              Featured Content
             </h2>
             {currentVideo && (
               <VideoPlayer 
@@ -796,13 +815,18 @@ function App() {
                 onClose={() => setCurrentVideo(null)}
               />
             )}
-            <FolderBrowser />
-            <h3 className="section-title">
-              <PlayCircle size={20} />
-              Recently Added
-            </h3>
             <VideoGrid 
-              videos={filteredVideos.slice(0, 4)} 
+              videos={featuredVideos} 
+              onPlay={handlePlayVideo}
+              viewMode={viewMode}
+            />
+            
+            <h2 className="section-title">
+              <PlayCircle size={24} />
+              Recently Added
+            </h2>
+            <VideoGrid 
+              videos={sampleVideos.slice(0, 4)} 
               onPlay={handlePlayVideo}
               viewMode={viewMode}
             />
@@ -835,13 +859,19 @@ function App() {
               <Grid3X3 size={24} />
               Browse by Categories
             </h2>
-            <FolderBrowser />
-            {filteredVideos.length > 0 && (
+            <FolderBrowser onCategorySelect={setSelectedCategory} />
+            {selectedCategory && filteredVideos.length > 0 && (
               <>
                 <h3 className="section-title">
                   <FileVideo size={20} />
-                  Videos in Selected Category
+                  {selectedCategory} Videos
                 </h3>
+                {currentVideo && (
+                  <VideoPlayer 
+                    currentVideo={currentVideo} 
+                    onClose={() => setCurrentVideo(null)}
+                  />
+                )}
                 <VideoGrid 
                   videos={filteredVideos} 
                   onPlay={handlePlayVideo}
